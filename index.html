@@ -17,25 +17,6 @@
     }
     .loading-bar { width: 300px; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 16px; }
     .loading-fill { width: 0%; height: 100%; background: #4ade80; transition: width 0.1s; }
-    #diag-panel {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 99999;
-      background: rgba(0, 0, 0, 0.9);
-      color: #00ff00;
-      font-family: 'Courier New, monospace';
-      font-size: 14px;
-      padding: 10px;
-      border: 2px solid #00ff00;
-      border-radius: 4px;
-      max-width: 400px;
-      display: none;
-    }
-    #diag-panel .stage { margin: 4px 0; }
-    #diag-panel .stage.ok { color: #00ff00; }
-    #diag-panel .stage.fail { color: #ff0000; }
-    #diag-panel .stage.info { color: #ffff00; }
     #touch-controls {
       position: absolute;
       bottom: 20px;
@@ -124,12 +105,40 @@
       background: rgba(255, 255, 255, 0.2);
     }
   </style>
-  <script type="module" crossorigin src="/graveyard-gauntlet-reboot/assets/game-BlemWzsY.js"></script>
+  <script>
+    // Global loading overlay control — accessible from Phaser game code
+    window.__hideLoading = function () {
+      const el = document.getElementById('loading-overlay')
+      if (el) {
+        el.style.transition = 'opacity 0.3s ease'
+        el.style.opacity = '0'
+        setTimeout(() => { el.style.display = 'none' }, 300)
+      }
+    }
+
+    window.__showError = function (msg) {
+      const el = document.getElementById('loading-overlay')
+      if (el) {
+        el.innerHTML = '<div style="color:#ff4444;font-weight:bold;">LOAD ERROR</div>' +
+                     '<div style="color:#e0e0e0;margin-top:8px;">' + msg + '</div>'
+        el.style.background = '#1a0000'
+      }
+      console.error('GAME LOAD ERROR:', msg)
+    }
+
+    // Fallback: hide loading overlay after 10 seconds even if something goes wrong
+    setTimeout(function () {
+      const el = document.getElementById('loading-overlay')
+      if (el && el.style.display !== 'none') {
+        window.__hideLoading()
+      }
+    }, 10000)
+  </script>
+  <script type="module" crossorigin src="/graveyard-gauntlet-reboot/assets/game-BrB3G-Oa.js"></script>
 </head>
 <body>
   <div id="game-container"></div>
 
-  <!-- Touch controls overlay (mobile) -->
   <div id="touch-controls">
     <div class="dpad">
       <div class="dpad-row">
@@ -155,98 +164,11 @@
     </div>
   </div>
 
-  <!-- Diagnostic panel outside Phaser canvas -->
-  <div id="diag-panel">
-    <div style="font-weight: bold; color: #ffffff; margin-bottom: 8px;">GRAVEYARD GAUNTLET — REBOOT DIAGNOSTICS</div>
-    <div id="diag-stage-init" class="stage info">INIT: HTML loaded</div>
-    <div id="diag-stage-phaser" class="stage info">PHASER: waiting...</div>
-    <div id="diag-stage-boot" class="stage info">BOOT: waiting...</div>
-    <div id="diag-stage-level" class="stage info">LEVEL: waiting...</div>
-    <div id="diag-errors" class="stage fail" style="display:none;"></div>
-  </div>
-
   <div id="loading-overlay" class="loading-overlay">
     <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px;">GRAVEYARD GAUNTLET</div>
     <div style="font-size: 14px; margin-top: 8px; opacity: 0.8;">Loading assets...</div>
     <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
   </div>
-  <script>
-    // Global diagnostic functions that Phaser can call
-    window.__diag = {
-      setStage: function(id, status, text) {
-        const el = document.getElementById(id);
-        if (el) {
-          el.textContent = text || id;
-          el.className = 'stage ' + (status === 'ok' ? 'ok' : status === 'fail' ? 'fail' : 'info');
-          el.style.display = 'block';
-        }
-      },
-      addError: function(msg) {
-        const el = document.getElementById('diag-errors');
-        if (el) {
-          el.style.display = 'block';
-          el.textContent += 'ERROR: ' + msg + '\\n';
-        }
-        console.error('DIAG ERROR:', msg);
-      },
-      updateCanvasInfo: function() {
-        const el = document.getElementById('canvas-info');
-        const canvas = document.querySelector('canvas');
-        if (el && canvas) {
-          const rect = canvas.getBoundingClientRect();
-          const style = getComputedStyle(canvas);
-          el.innerHTML = [
-            'Canvas: ' + canvas.width + 'x' + canvas.height,
-            'CSS: ' + rect.width.toFixed(0) + 'x' + rect.height.toFixed(0),
-            'Style w/h: ' + style.width + ' / ' + style.height,
-            'Opacity: ' + style.opacity,
-            'Visibility: ' + style.visibility,
-            'Display: ' + style.display,
-            'Z-index: ' + style.zIndex,
-            'Position: ' + style.position,
-            'Game running: ' + (window.game ? window.game.isRunning : 'no game'),
-            'Game booted: ' + (window.game ? window.game.isBooted : 'no game'),
-            'Game destroyed: ' + (window.game ? window.game.isDestroyed : 'no game')
-          ].join('<br>');
-        }
-      }
-    };
 
-    // Periodically update canvas info
-    setInterval(() => {
-      if (window.__diag) window.__diag.updateCanvasInfo();
-    }, 500);
-
-    // Hide loading overlay when Phaser is ready
-    const hideLoading = () => {
-      const overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'none';
-    };
-    const checkReady = setInterval(() => {
-      if (window.game && window.game.isBooted) {
-        hideLoading();
-        clearInterval(checkReady);
-      }
-    }, 100);
-    setTimeout(() => { hideLoading(); clearInterval(checkReady); }, 5000);
-  </script>
-  <script>
-    window.addEventListener('error', function(e) {
-      const el = document.getElementById('diag-errors');
-      if (el) {
-        el.style.display = 'block';
-        el.textContent += 'GLOBAL ERROR: ' + (e.message || 'unknown') + ' at ' + (e.filename || 'unknown') + ':' + (e.lineno || 'unknown') + '\\n';
-      }
-      console.error('GLOBAL ERROR:', e);
-    });
-    window.addEventListener('unhandledrejection', function(e) {
-      const el = document.getElementById('diag-errors');
-      if (el) {
-        el.style.display = 'block';
-        el.textContent += 'UNHANDLED REJECTION: ' + (e.reason || 'unknown') + '\\n';
-      }
-      console.error('UNHANDLED REJECTION:', e);
-    });
-  </script>
 </body>
 </html>
